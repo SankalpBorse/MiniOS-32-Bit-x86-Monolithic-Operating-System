@@ -1,4 +1,4 @@
-# SankalpOS — 32-Bit x86 Monolithic Operating System
+# MiniOS — 32-Bit x86 Monolithic Operating System
 
 > **A bare-metal, monolithic 32-bit x86 educational operating system written from scratch in x86 Assembly (NASM) and Freestanding C (C99). Features a custom two-stage bootloader, GDT/A20 protected mode switch, complete interrupt and exception subsystem (IDT & 8259 PIC), PIT timer, PS/2 keyboard ring buffer, dynamic heap allocator (`kmalloc`/`kfree`), and an interactive command shell.**
 
@@ -56,7 +56,7 @@
 
 ## 2. Physical Memory Map
 
-SankalpOS uses a deterministic physical memory layout in the first 2 MB of RAM:
+MiniOS uses a deterministic physical memory layout in the first 2 MB of RAM:
 
 | Physical Address Range | Size | Component / Purpose | Mode Active |
 |---|---|---|---|
@@ -142,7 +142,7 @@ SankalpOS uses a deterministic physical memory layout in the first 2 MB of RAM:
 1. **512-Byte Constraint & Magic Signature:**
    The BIOS loads exactly one sector (512 bytes) from the boot medium into physical address `0x7C00`. Byte offsets 510 and 511 must contain the magic word `0xAA55`. If absent, the BIOS treats the drive as non-bootable and skips it.
 2. **Dynamic Boot Drive Identification:**
-   BIOS automatically supplies the active boot drive index in register `DL` (`0x00` = Floppy 1, `0x80` = Hard Disk 1). SankalpOS preserves `DL` at the very first instruction before any register alteration:
+   BIOS automatically supplies the active boot drive index in register `DL` (`0x00` = Floppy 1, `0x80` = Hard Disk 1). MiniOS preserves `DL` at the very first instruction before any register alteration:
    ```nasm
    mov [BOOT_DRIVE], dl
    mov [0x7006], dl         ; Export to protected mode mailbox
@@ -153,7 +153,7 @@ SankalpOS uses a deterministic physical memory layout in the first 2 MB of RAM:
    * **`INT 0x15, AX=0xE801`:** Industry standard memory map interrogation. Returns memory between 1MB and 16MB in KB (`AX`), and memory above 16MB in 64KB blocks (`BX`). Stored at `0x7002` and `0x7004`.
 4. **Segment Arithmetic Disk Loading (Bypassing 16-bit Register Truncation):**
    16-bit registers cannot represent offsets exceeding `0xFFFF`. Attempting `mov bx, 0x10000` silently truncates to `0x0000`, causing disk reads to overwrite the Real Mode Interrupt Vector Table at address 0 and instantly triple faulting.  
-   **The Fix:** SankalpOS uses segment arithmetic where $\text{Address} = (\text{Segment} \times 16) + \text{Offset}$:
+   **The Fix:** MiniOS uses segment arithmetic where $\text{Address} = (\text{Segment} \times 16) + \text{Offset}$:
    ```nasm
    mov ax, 0x1000       ; 0x1000 * 16 = 0x10000 (physical)
    mov es, ax
@@ -172,7 +172,7 @@ SankalpOS uses a deterministic physical memory layout in the first 2 MB of RAM:
 
 ### 4.2 GDT & The 32-Bit Protected Mode Switch
 1. **The Fast Gate A20:**
-   The 8086 processor had 20 address lines (`A0`–`A19`), capping memory at 1MB. Addresses exceeding 1MB wrapped back to 0. Protected Mode requires `A20` enabled to address memory above 1MB. SankalpOS uses Fast Gate A20 via system control port `0x92`:
+   The 8086 processor had 20 address lines (`A0`–`A19`), capping memory at 1MB. Addresses exceeding 1MB wrapped back to 0. Protected Mode requires `A20` enabled to address memory above 1MB. MiniOS uses Fast Gate A20 via system control port `0x92`:
    ```nasm
    in al, 0x92
    or al, 2
@@ -185,7 +185,7 @@ SankalpOS uses a deterministic physical memory layout in the first 2 MB of RAM:
    * **Access Byte:** Present (P), Descriptor Privilege Level (DPL 00 = Ring 0), Type (Code/Data), Executable, Direction/Conforming, Readable/Writable.
    * **Granularity Flags:** Granularity ($G=1 \rightarrow 4\text{KB pages}$), Size ($D=1 \rightarrow 32\text{-bit default operands}$).
 
-   SankalpOS implements a Flat Memory Model:
+   MiniOS implements a Flat Memory Model:
    * **Descriptor 0 (`0x00`):** Mandatory Null Descriptor (all zeros).
    * **Descriptor 1 (`0x08`):** Kernel Code Segment. Base = `0x0`, Limit = `0xFFFFF`, Granularity = 4KB ($4\text{KB} \times 0x100000 = 4\text{GB}$). Access byte `0x9A` (`10011010b` = Code, Execute/Read).
    * **Descriptor 2 (`0x10`):** Kernel Data Segment. Base = `0x0`, Limit = `0xFFFFF`, Granularity = 4KB ($4\text{GB}$). Access byte `0x92` (`10010010b` = Data, Read/Write).
@@ -306,7 +306,7 @@ SankalpOS uses a deterministic physical memory layout in the first 2 MB of RAM:
 1. **The Vector Collision Conflict:**
    By default, the IBM PC BIOS programs the Master 8259 PIC to fire IRQs 0–7 on interrupt vectors `0x08`–`0x0F`. However, in 32-bit Protected Mode, Intel reserved vectors `0x08`–`0x0F` for CPU hardware exceptions (Double Fault, Invalid TSS, Segment Not Present, Stack Fault, GPF). Without remapping, any timer tick triggers an unhandled Double Fault exception!
 2. **The Remapping Sequence:**
-   SankalpOS remaps the PICs through the 4 Initialization Command Words (ICWs):
+   MiniOS remaps the PICs through the 4 Initialization Command Words (ICWs):
    * **`ICW1` (Ports `0x20`, `0xA0`):** `0x11` $\rightarrow$ Initialize cascade mode, expect ICW4.
    * **`ICW2` (Ports `0x21`, `0xA1`):** Vector offsets $\rightarrow$ Master PIC offset = `0x20` (INT 32–39), Slave PIC offset = `0x28` (INT 40–47).
    * **`ICW3` (Ports `0x21`, `0xA1`):** Master has slave on IRQ2 (`0x04`); Slave identity = 2 (`0x02`).
@@ -409,7 +409,7 @@ Implements an interactive Read-Eval-Print Loop (REPL) handling character echoes,
 | **`mem`** | Prints physical x86 memory map and dynamic heap statistics (Used, Free, Total KB). |
 | **`clear`** | Calls `clear_screen()` and resets cursor to `(0, 0)`. |
 | **`about`** | Author and architectural overview. |
-| **`version`** | Displays `SankalpOS v0.1`. |
+| **`version`** | Displays `MiniOS v0.1`. |
 | **`reboot`** | Pulses CPU reset line by writing `0xFE` to the 8042 PS/2 controller port `0x64`. |
 | **`exit` / `shutdown`** | Powers off QEMU virtual machine by sending `0x2000` to ACPI power management port `0x604` / `0xB004`. |
 
@@ -594,7 +594,7 @@ This section is engineered to prepare you for embedded systems, low-level softwa
 
 ### Category D: Memory Management & Heap Allocation
 
-#### Q12: Explain the First-Fit dynamic memory allocation algorithm implemented in SankalpOS.
+#### Q12: Explain the First-Fit dynamic memory allocation algorithm implemented in MiniOS.
 > **Answer:**
 > The heap starts at physical address `0x100000` (1MB). Each block begins with an intrusive `block_t` header:
 > ```c
@@ -608,10 +608,10 @@ This section is engineered to prepare you for embedded systems, low-level softwa
 > * **Block Splitting:** If the free block is significantly larger than requested (`size + sizeof(block_t) + 4`), the block is split into an allocated front block and a remaining free trailing block.
 > * **`kfree(ptr)`:** Computes header address `(uint8_t*)ptr - sizeof(block_t)`, sets `used = 0`, and iterates through the list merging adjacent free blocks (`curr->size += sizeof(block_t) + curr->next->size`).
 
-#### Q13: What is External Fragmentation vs. Internal Fragmentation, and how does SankalpOS address them?
+#### Q13: What is External Fragmentation vs. Internal Fragmentation, and how does MiniOS address them?
 > **Answer:**
-> * **Internal Fragmentation:** Wasted memory inside an allocated block due to alignment or minimum block size. SankalpOS uses tight 4-byte alignment, minimizing internal fragmentation to at most 3 unused bytes per allocation.
-> * **External Fragmentation:** Occurs when free memory is divided into small, non-contiguous blocks that cannot satisfy larger allocation requests despite total free memory being sufficient. SankalpOS combats external fragmentation by performing **immediate adjacent block coalescing** inside `kfree()`.
+> * **Internal Fragmentation:** Wasted memory inside an allocated block due to alignment or minimum block size. MiniOS uses tight 4-byte alignment, minimizing internal fragmentation to at most 3 unused bytes per allocation.
+> * **External Fragmentation:** Occurs when free memory is divided into small, non-contiguous blocks that cannot satisfy larger allocation requests despite total free memory being sufficient. MiniOS combats external fragmentation by performing **immediate adjacent block coalescing** inside `kfree()`.
 
 ---
 
@@ -630,7 +630,7 @@ This section is engineered to prepare you for embedded systems, low-level softwa
 #### Q16: How does the CPU `HLT` instruction work in OS sleep routines?
 > **Answer:**
 > The `HLT` (Halt) instruction stops CPU instruction execution and puts the processor into a low-power quiescent state until an enabled hardware interrupt (such as IRQ0 timer or IRQ1 keyboard) or non-maskable interrupt (NMI) arrives.  
-> In SankalpOS, `keyboard_getchar()` and `sleep_ticks()` execute `__asm__ volatile ("hlt")` inside polling loops. This prevents 100% busy-wait CPU utilization while guaranteeing instantaneous wakeup when hardware interrupts occur.
+> In MiniOS, `keyboard_getchar()` and `sleep_ticks()` execute `__asm__ volatile ("hlt")` inside polling loops. This prevents 100% busy-wait CPU utilization while guaranteeing instantaneous wakeup when hardware interrupts occur.
 
 ---
 
@@ -649,7 +649,7 @@ This section is engineered to prepare you for embedded systems, low-level softwa
 #### Q19: What is the purpose of the linker script in OS development?
 > **Answer:**
 > Compilers output independent object files (`.o`) with relative section offsets. The Linker Script (`linker.ld`):
-> 1. Defines the **Virtual Memory Address (VMA)** and **Load Memory Address (LMA)** origin (in SankalpOS, `. = 0x10000`).
+> 1. Defines the **Virtual Memory Address (VMA)** and **Load Memory Address (LMA)** origin (in MiniOS, `. = 0x10000`).
 > 2. Enforces section ordering so that `.entry` (`kernel_entry.asm`) is located at the exact beginning of the binary, ensuring execution starts at `_start`.
 > 3. Merges sections (`.text`, `.rodata`, `.data`, `.bss`) from multiple translation units.
 > 4. Assigns global symbols (e.g., `_bss_start`, `_bss_end`) for runtime initialization.
@@ -658,7 +658,7 @@ This section is engineered to prepare you for embedded systems, low-level softwa
 
 ## 9. License & Credits
 
-* **OS Name:** SankalpOS
+* **OS Name:** MiniOS
 * **Author / Developer:** Sankalp
 * **Architecture:** 32-Bit x86 Protected Mode
 * **License:** MIT License — Open for educational and personal research use.

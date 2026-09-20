@@ -223,9 +223,9 @@ static void cmd_clear(void) {
 
 static void cmd_about(void) {
     set_color(VGA_LIGHT_MAGENTA, VGA_BLACK);
-    println("About SankalpOS:");
+    println("About MiniOS:");
     set_color(VGA_WHITE, VGA_BLACK);
-    println("  Project:     SankalpOS");
+    println("  Project:     MiniOS");
     println("  Author:      Sankalp");
     println("  Description: Lightweight x86 32-bit Protected Mode OS built from scratch.");
     println("  Features:    Custom bootloader, GDT, A20, VGA driver, IDT/PIC, PS/2 shell, Heap.");
@@ -233,7 +233,7 @@ static void cmd_about(void) {
 
 static void cmd_version(void) {
     set_color(VGA_LIGHT_GREEN, VGA_BLACK);
-    println("SankalpOS v0.1");
+    println("MiniOS v0.1");
 }
 
 static void cmd_reboot(void) {
@@ -292,7 +292,7 @@ static void shell_dispatch(const char* cmd) {
 
 void shell_init(void) {
     set_color(VGA_LIGHT_CYAN, VGA_BLACK);
-    println("SankalpOS Shell v0.1 ready. Type 'help' for commands.");
+    println("MiniOS Shell v0.1 ready. Type 'help' for commands.");
     println("");
 }
 
